@@ -1,0 +1,4 @@
+interface:
+  display_name: "AVC Interface Design"
+  short_description: "Design and verify in-dash Android interfaces"
+  default_prompt: "Use $cc3-head-unit-design to improve this head-unit interface and compare the rendered result at its actual display settings."

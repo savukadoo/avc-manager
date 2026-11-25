@@ -1,0 +1,42 @@
+AVC Manager — earlier Toyota1GD profile, revision0.5.0
+
+This profile contains independently written read-only decoders. A decoded reply
+establishes communication, not reference-tool validation of its physical meaning.
+
+Transmission pan/converter2182: ScanGauge Australia Toyota2016–2020 definitions;
+GeeWhizz's earlier Prado raw captures. Gear/lock-up2185: GeeWhizz's PradoPoint
+thread and Aquanaught's2018 confirmation.
+https://www.scangauge.com.au/toyota-x-gauges/
+https://www.pradopoint.com.au/forum/-150-series-discussion-the-2010-prado/drive-train-150-series/752612-selected-gear-indication-for-the-gdj-s-6-speed-transmission-using-obdii
+
+DPF accumulation2138: Godzilla73,25Jan2019, NewHilux. Tenth data byte times2;
+values above100 are preserved, without a diagnostic blockage threshold.
+https://www.newhilux.net/phpbb/viewtopic.php?start=220&t=26849
+
+Earlier130kW pressure2104, additional2138 fields, actual/target rail pressure2105,
+and four injector feedback fields213D: ptommo59,23Feb2026, NewHilux/PradoPoint.
+The author used earlier Prado data and explicitly requests further validation.
+Actual rail pressure: U16(D,E) times10kPa; target: U16(B,C) times10kPa.
+The UI displays MPa (raw word times0.01), or psi with Imperial units.
+Injector1/2/3/4: P/Q/R/S divided by12.8 minus10mm3/stroke.
+https://www.newhilux.net/phpbb/viewtopic.php?t=45103
+
+Toyota pressure2104 uses U16(J,K)/100 minus327.68kPa. This conflicts with the
+signed SAE017A interpretation seen on this ECU; the Toyota candidate remains
+experimental. The implausible signed comparison is excluded from this profile.
+The standard definition remains available to other vehicle profiles.
+
+Oil temperature,018B regeneration fields, diagnostic service-regeneration status,
+regeneration observations and unmapped regeneration counters are excluded from
+this Toyota profile at the owner's request. No015C,2151 or018B probe is sent.
+
+Historical attribution: earlier versions tested an oil-temperature definition
+from OBDb/Toyota-Fortuner, CC BY-SA4.0. That Toyota decoder has been removed.
+https://github.com/OBDb/Toyota-Fortuner/blob/main/signalsets/v3/default.json
+https://creativecommons.org/licenses/by-sa/4.0/
+
+Transport/header framing follows ELM Electronics' ELM327L data sheet. The selected
+profile permits only its declared sensor reads and physical/functional headers.
+This Toyota profile uses7E0 and7DF; only2104,2105,2138,213D,2182 and2185 manufacturer
+reads are included. No vehicle write, actuation, code clearing or raw terminal.
+https://www.elmelectronics.com/wp-content/uploads/2016/07/ELM327L_Data_Sheet.pdf

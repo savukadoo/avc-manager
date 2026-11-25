@@ -1,0 +1,21 @@
+{
+  "zdtun_base_commit": "4a53fbbbfc16ed012af676a871dd989f3583a5e6",
+  "patch_register": "third_party/zdtun/CC3_PATCHES.md",
+  "files_sha256": {
+    "third_party/zdtun/CC3_PATCHES.md": "5f7ec945cf0928dd0fab63094de6478879612e663b997ef84fe7c36805242051",
+    "third_party/zdtun/CMakeLists.txt": "513d124d29bbf9f342a38f4e8d442256bffbc23409bfbaa62ab75cb82d11b600",
+    "third_party/zdtun/COPYING": "e3a994d82e644b03a792a930f574002658412f62407f5fee083f2555c5f23118",
+    "third_party/zdtun/README.md": "53da04417ae5629075bff7f2251aa65507f664c2bf6971bade7a6e8bc8ed689f",
+    "third_party/zdtun/socks5.c": "bb2e7f57c1b70f7e530d19cdd1759bfd172d8ee6efb1e051398398d18d9529c7",
+    "third_party/zdtun/socks5.h": "86f87aebeae9c6758d4c2c5fb21765e3f413ab969f992376b252544576309484",
+    "third_party/zdtun/third_party/net_headers.h": "941e8f24182e735aadaf197d6171179b98fe9f74345617efe0f5210d8a4a71e6",
+    "third_party/zdtun/third_party/uthash.h": "a18268af4e5a2153b1f8a3bbba5732133c212eb49b17c3dc622c176ce6c7e53f",
+    "third_party/zdtun/utils.c": "4445b3ba738d6796a9d9e8597e21c0fee826987f9ba4e85805c80c9294020f1c",
+    "third_party/zdtun/utils.h": "9e92f1be1a0a5514abce43236a53f045319ec59132832e76e62fafa64d0a3284",
+    "third_party/zdtun/zdtun.c": "cff4dcae934b14de5d78d05c5303bda602f5078af1bd766761a7e9231f928626",
+    "third_party/zdtun/zdtun.h": "617304064889cd2fbd70f86e89c552a53eb677eecd5506f928f17fd25dbe1e41",
+    "third_party/zdtun/zdtun_client.c": "65d5dd798e83fae6323d549b875dd44412fe9ced11268d312f23fa030fe90641",
+    "third_party/zdtun/zdtun_gateway.c": "2a3d203159216cc59f1d08315d1d7f114251dc5bc89cdbed47ebeda4cb616519",
+    "third_party/zdtun/zdtun_pivot.c": "1588cab2769a332208ad72ba4168b6ef86d0efb34b9b451b1508cf9792686c48"
+  }
+}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Android Head Unit Apps"
+  short_description: "Build and test native Android head-unit apps"
+  default_prompt: "Use $android-head-unit-app to implement this head-unit change and verify the driver-facing flow on the target display."

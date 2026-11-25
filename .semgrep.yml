@@ -1,0 +1,33 @@
+rules:
+  - id: cc3-no-dynamic-java-execution
+    languages: [java]
+    message: Dynamic execution/loading requires security review; use fixed native app operations.
+    severity: ERROR
+    pattern-either:
+      - pattern: Runtime.getRuntime().exec(...)
+      - pattern: new ProcessBuilder(...)
+      - pattern: new DexClassLoader(...)
+      - pattern: new ObjectInputStream(...)
+  - id: cc3-no-webview-javascript-bridge
+    languages: [java]
+    message: Native app must not expose a JavaScript bridge without a separate security review.
+    severity: ERROR
+    pattern: $WEB.addJavascriptInterface(...)
+  - id: cc3-no-tls-bypass
+    languages: [java]
+    message: Do not install a permissive hostname verifier or global SSL socket factory.
+    severity: ERROR
+    pattern-either:
+      - pattern: HttpsURLConnection.setDefaultHostnameVerifier(...)
+      - pattern: HttpsURLConnection.setDefaultSSLSocketFactory(...)
+      - pattern: $HTTP.setHostnameVerifier(...)
+  - id: cc3-no-md5-signatures
+    languages: [java]
+    message: Legacy display fingerprints are separate; MD5 must not be used for signatures.
+    severity: ERROR
+    pattern: Signature.getInstance("MD5withRSA")
+  - id: cc3-no-hardcoded-access-token
+    languages: [generic]
+    message: A credential-like token or private key must not be committed.
+    severity: ERROR
+    pattern-regex: '(-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|ghp_[A-Za-z0-9]{30,}|AKIA[A-Z0-9]{16}|AIza[0-9A-Za-z_-]{35})'

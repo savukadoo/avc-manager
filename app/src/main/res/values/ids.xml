@@ -1,0 +1,7 @@
+<resources>
+    <item name="equalizer_graph_panel" type="id"/>
+    <item name="equalizer_profiles_panel" type="id"/>
+    <item name="appearance_background" type="id"/>
+    <item name="appearance_colours" type="id"/>
+    <item name="appearance_clock" type="id"/>
+</resources>

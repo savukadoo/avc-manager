@@ -1,0 +1,23 @@
+<resources>
+    <color name="avc_obsidian_accent">#A2CFE7</color>
+    <style name="AvcObsidianAccent">
+        <item name="android:colorAccent">@color/avc_obsidian_accent</item>
+    </style>
+    <style name="AvcMidnightAccent">
+        <item name="android:colorAccent">#5DDBEE</item>
+    </style>
+    <style name="AvcDuskAccent">
+        <item name="android:colorAccent">#E5ADDB</item>
+    </style>
+    <style name="AvcCopperAccent">
+        <item name="android:colorAccent">#F5A874</item>
+    </style>
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">@color/avc_obsidian_accent</item>
+        <item name="android:windowBackground">#0C0F12</item>
+        <item name="android:statusBarColor">#0C0F12</item>
+        <item name="android:navigationBarColor">#0C0F12</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

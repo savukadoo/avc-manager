@@ -1,0 +1,23 @@
+[
+  {
+    "id": "orbital-sunset",
+    "url": "https://www.nasa.gov/wp-content/uploads/2026/03/sunset-silhouettes-%E2%80%93-desktop-%E2%80%93-image-only.png?w=1280",
+    "source": "https://www.nasa.gov/international-space-station/desktop-and-mobile-wallpapers/",
+    "credit": "NASA",
+    "usage_guidelines": "https://www.nasa.gov/nasa-brand-center/images-and-media/"
+  },
+  {
+    "id": "orbital-aurora",
+    "url": "https://www.nasa.gov/wp-content/uploads/2026/03/a-wispy-aurora-%E2%80%93-desktop-%E2%80%93-image-only.png?w=1280",
+    "source": "https://www.nasa.gov/international-space-station/desktop-and-mobile-wallpapers/",
+    "credit": "NASA",
+    "usage_guidelines": "https://www.nasa.gov/nasa-brand-center/images-and-media/"
+  },
+  {
+    "id": "moonrise",
+    "url": "https://www.nasa.gov/wp-content/uploads/2026/03/waning-crescent-moon-%E2%80%93-desktop-%E2%80%93-image-only.png?w=1280",
+    "source": "https://www.nasa.gov/international-space-station/desktop-and-mobile-wallpapers/",
+    "credit": "NASA",
+    "usage_guidelines": "https://www.nasa.gov/nasa-brand-center/images-and-media/"
+  }
+]

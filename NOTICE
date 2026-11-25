@@ -1,0 +1,25 @@
+AVC Manager (Android Vehicle Console)
+SPDX-License-Identifier: AGPL-3.0-only
+
+AVC Manager's original source code, tools, tests, documentation and original UI
+assets are licensed under the GNU Affero General Public License, version 3
+only. The full text is in LICENSE.
+
+The inherited FYT/ADB code carries the original MIT copyright and permission
+notice for lrehmann and contributors and Adam Toqe. That notice is reproduced
+verbatim in LICENSES/FYT-ADB-MIT.txt.
+
+The bundled zdtun library is licensed under LGPL-3.0-or-later. Its licence,
+sources and local patch register are in third_party/zdtun. The associated
+GPLv3 text is in LICENSES/GPL-3.0.txt. The bundled uthash header retains
+Troy D. Hanson's BSD-1-Clause notice.
+
+Image, geographic data and OBD definition credits and usage terms are listed
+in the README, app/src/main/assets/wallpapers and the Toyota profile notice.
+These materials retain their respective terms. Third-party online services
+also have their own terms.
+
+When distributing an APK or module JAR, provide its corresponding source,
+including the scripts needed to build it, under section 6 of the AGPL. Under
+section 13, a modified version that supports remote interaction must
+prominently offer network users access to its corresponding source.
