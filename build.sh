@@ -36,8 +36,6 @@ while IFS= read -r -d '' file; do sources+=("$file"); done < <(find app/src/main
 (cd "$work/dex" && /usr/bin/zip -q -0 "$work/base.apk" classes.dex)
 (cd "$work/native" && /usr/bin/zip -qr "$work/base.apk" lib)
 "$BUILD_TOOLS/zipalign" -f 4 "$work/base.apk" "$work/aligned.apk"
-"$BUILD_TOOLS/apksigner" sign --ks "$signing_key" --ks-key-alias "$signing_alias" \
-  "${signing_password[@]}" --out "$out/CC3-Manager.apk" "$work/aligned.apk"
-"$BUILD_TOOLS/apksigner" verify --min-sdk-version 29 --verbose "$out/CC3-Manager.apk"
-cp "$out/CC3-Manager.apk" "$out/AVC-Manager.apk"
+"$BUILD_TOOLS/apksigner" sign "${signing_options[@]}" --out "$out/AVC-Manager.apk" "$work/aligned.apk"
+"$BUILD_TOOLS/apksigner" verify --min-sdk-version 29 --verbose "$out/AVC-Manager.apk"
 printf '\n%s\n' "$out/AVC-Manager.apk"

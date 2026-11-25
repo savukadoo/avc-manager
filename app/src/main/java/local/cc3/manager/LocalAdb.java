@@ -23,7 +23,7 @@ import java.util.Locale;
 /** Minimal legacy ADB transport for AVC Manager's fixed commands on Android 10. */
 final class LocalAdb implements AutoCloseable {
     private static final String PACKAGE = "com.teyes.hanna";
-    private static final String KEY = "cc3-manager-local-adb";
+    private static final String KEY = Screen.STORAGE_NAME.replace('_', '-') + "-local-adb";
     private static final int CNXN = 0x4e584e43, AUTH = 0x48545541, OPEN = 0x4e45504f;
     private static final int OKAY = 0x59414b4f, WRTE = 0x45545257, CLSE = 0x45534c43;
     private static final byte[] EMPTY = new byte[0];

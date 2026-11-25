@@ -34,3 +34,5 @@ The address above is an example; read the current one on the device. The pairing
 ## Verification
 
 Run `bash tools/verify.sh` with the Android toolchain configured as described in the [build guide](README.md#build). The workflow runs the host tests, signed APK checks and native parser checks.
+
+For a keystore containing several signing keys, set `CC3_SIGNING_ALIAS` to the alias of the existing release certificate. Builds with a single key select it automatically.

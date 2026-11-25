@@ -34,7 +34,9 @@ import android.widget.Toast;
 
 abstract class Screen extends Activity {
     static final String APPEARANCE = "appearance";
-    static final String MANAGER_ROUTE = "cc3_manager_route";
+    // Persisted protocol identifiers must survive a change to the display name.
+    static final String STORAGE_NAME = "cc3_manager";
+    static final String MANAGER_ROUTE = STORAGE_NAME + "_route";
     static final String[] THEMES = {"Obsidian", "Midnight Blue", "Dusk", "Copper"};
     LinearLayout content;
     Palette colors;
@@ -113,7 +115,7 @@ abstract class Screen extends Activity {
     }
 
     SharedPreferences prefs() {
-        return getSharedPreferences("cc3_manager", MODE_PRIVATE);
+        return getSharedPreferences(STORAGE_NAME, MODE_PRIVATE);
     }
 
     static Intent managerIntent(android.content.Context context, String section) {

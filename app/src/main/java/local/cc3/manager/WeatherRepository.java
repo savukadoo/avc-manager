@@ -160,7 +160,7 @@ final class WeatherRepository implements java.io.Closeable {
     /** Resolve the same consented foreground place without requesting forecast data. */
     WeatherRepository(Context context, Listener listener, PlaceListener placeListener) {
         this.context = context.getApplicationContext();
-        this.prefs = this.context.getSharedPreferences("cc3_manager", Context.MODE_PRIVATE);
+        this.prefs = this.context.getSharedPreferences(Screen.STORAGE_NAME, Context.MODE_PRIVATE);
         this.listener = listener;
         this.placeListener = placeListener;
     }

@@ -1,4 +1,4 @@
-# CC3 Manager OBD integration proposal
+# AVC Manager OBD integration proposal
 
 Research and native-code inspection: 21 November 2026. This is a design proposal, not a claim that the Veepeak adapter has connected to this CC3 or that vehicle data has been read.
 

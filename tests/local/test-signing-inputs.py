@@ -14,6 +14,6 @@ with tempfile.TemporaryDirectory(prefix='cc3-signing-tests-') as directory:
     assert accepted();checks+=1
     os.chmod(password,0o644);assert not accepted();checks+=1
     os.chmod(password,0o600);assert not accepted(directory/'missing');checks+=1
-    assert not accepted(ROOT/'build/CC3-Manager.apk');checks+=1
+    assert not accepted(ROOT/'build/AVC-Manager.apk');checks+=1
     assert not (directory/'missing').exists();checks+=1
 print(f'{checks} release signing boundary checks passed')

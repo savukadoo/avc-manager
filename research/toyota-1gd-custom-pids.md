@@ -45,7 +45,7 @@ Proposed standard-PID decoding still needs an authoritative standard/schema chec
 
 ## Oil and engine temperature follow-up — 22 November 2026
 
-CC3 Manager already implements standard **coolant `0105`**, **intake air `010F`** and **engine oil `015C`**, but only ECU-discovered supported sensors are polled. An entry in the registry is not proof of support on this vehicle. “Engine temperature” should be labelled coolant when that is the actual measured quantity.
+AVC Manager already implements standard **coolant `0105`**, **intake air `010F`** and **engine oil `015C`**, but only ECU-discovered supported sensors are polled. An entry in the registry is not proof of support on this vehicle. “Engine temperature” should be labelled coolant when that is the actual measured quantity.
 
 A further search found an additional **unverified** engine-oil lead in [OBDb's original Fortuner definitions](https://github.com/OBDb/Toyota-Fortuner/blob/main/signalsets/v3/default.json): header `7E0`, response `7E8`, request `2151`, signal `FORTUNER_EOT`, an eight-bit field at data bit 72 with offset −40 °C. The command is explicitly `dbg:true`. The same reply definition separately names VVT oil temperature and previous-trip engine-oil temperature; these are distinct parameters. The file mixes Toyota generations and engines and does not establish 2018 1GD applicability. A diesel without the corresponding measurement must not inherit a petrol/VVT interpretation simply because the response matches a request identifier.
 
@@ -77,7 +77,7 @@ OBDb's Hilux repository uses **CC BY-SA 4.0**. Its `2138` row agrees on byte ind
 
 The existing generic allowlist and installed app were left unchanged by this research. [ELM Electronics framing/header reference](https://www.elmelectronics.com/wp-content/uploads/2016/07/ELM327L_Data_Sheet.pdf)
 
-## Implementation status — CC3 Manager 0.3.4
+## Implementation status — AVC Manager 0.3.4
 
 The owner authorised adding the custom profile and checking engine-oil support. The installed 0.3.4 profile adds six Toyota test channels: ATF pan/converter (`2182`), DPF accumulation (`2138`), reported gear/lock-up (`2185`) and experimental oil (`2151`). Three standard EGT channels (`0178`) honour individual presence flags. Standard oil (`015C`) is checked directly even when not advertised. Only successfully decoded selected-ECU Toyota channels are offered as available in the dashboard picker; all check outcomes remain visible in Sensors. Mode 21 is restricted to those four requests and the two exact headers `7E0`/`7DF`; standard addressing is restored before ordinary sensors and fault reads. Toyota measurements remain labelled **Toyota test**, with source/definition details and local raw replies available. No regen state, differential pressure, injector corrections or later-model `22xxxx` definitions were added.
 

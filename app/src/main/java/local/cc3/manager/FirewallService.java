@@ -35,9 +35,9 @@ public final class FirewallService extends VpnService {
     private static volatile boolean systemAlwaysOn, systemLockdown;
     static boolean alwaysOn(){return systemAlwaysOn;}
     static boolean lockdown(){return systemLockdown;}
-    static boolean persistent(Context context){return context.getSharedPreferences("cc3_manager",MODE_PRIVATE).getBoolean("firewall_persistent",false);}
-    static boolean wanted(Context context){return context.getSharedPreferences("cc3_manager",MODE_PRIVATE).getBoolean("firewall_wanted",false);}
-    private void remember(boolean enabled){getSharedPreferences("cc3_manager",MODE_PRIVATE).edit().putBoolean("firewall_wanted",enabled).apply();}
+    static boolean persistent(Context context){return context.getSharedPreferences(Screen.STORAGE_NAME,MODE_PRIVATE).getBoolean("firewall_persistent",false);}
+    static boolean wanted(Context context){return context.getSharedPreferences(Screen.STORAGE_NAME,MODE_PRIVATE).getBoolean("firewall_wanted",false);}
+    private void remember(boolean enabled){getSharedPreferences(Screen.STORAGE_NAME,MODE_PRIVATE).edit().putBoolean("firewall_wanted",enabled).apply();}
     private boolean keepProtection(){return FirewallRestartPolicy.keep(isAlwaysOn(),persistent(this),wanted(this),revoked);}
     private int restartMode(){return keepProtection()?START_STICKY:START_NOT_STICKY;}
 

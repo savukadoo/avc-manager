@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+python3 tools/check-branding.py
 bash tools/test-obd-engine.sh
 bash tools/test-security.sh
 bash tools/test-weather-timing.sh

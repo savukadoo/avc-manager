@@ -2,7 +2,7 @@
 from pathlib import Path
 import os,subprocess,tempfile,zipfile
 root=Path(__file__).resolve().parents[1]
-with tempfile.TemporaryDirectory(prefix='cc3-apk-gate-') as work,zipfile.ZipFile(root/'build/CC3-Manager.apk') as apk:
+with tempfile.TemporaryDirectory(prefix='cc3-apk-gate-') as work,zipfile.ZipFile(root/'build/AVC-Manager.apk') as apk:
     assert not any(n.lower().endswith(('.keystore','.jks','.pem','.p12','.pfx','.key')) for n in apk.namelist()),'private signing material in APK'
     for source in ('LICENSE', 'NOTICE', 'LICENSES/FYT-ADB-MIT.txt', 'LICENSES/GPL-3.0.txt'):
         name = 'assets/licenses/' + Path(source).name
@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory(prefix='cc3-apk-gate-') as work,zipfile.ZipFile
         assert 'RWE' not in stack and 'GNU_RELRO' in report and ('BIND_NOW' in report or 'NOW' in report),name
         assert '__stack_chk_fail' in report,'stack protection missing: '+name
     aapt=Path(os.environ['BUILD_TOOLS'])/'aapt2'
-    manifest=subprocess.run([str(aapt),'dump','xmltree',str(root/'build/CC3-Manager.apk'),'--file','AndroidManifest.xml'],capture_output=True,text=True,check=True).stdout
+    manifest=subprocess.run([str(aapt),'dump','xmltree',str(root/'build/AVC-Manager.apk'),'--file','AndroidManifest.xml'],capture_output=True,text=True,check=True).stdout
     assert 'android:debuggable' not in manifest,'release manifest must not be debuggable'
     assert 'android:allowBackup' in manifest and 'allowBackup(0x01010280)=false' in manifest
 print('APK private-material, non-debuggable, backup and native hardening checks passed')

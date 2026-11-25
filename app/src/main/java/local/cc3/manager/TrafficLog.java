@@ -34,7 +34,7 @@ final class TrafficLog {
 
     TrafficLog(Context context) {
         packages = context.getPackageManager();
-        prefs = context.getSharedPreferences("cc3_manager", Context.MODE_PRIVATE);
+        prefs = context.getSharedPreferences(Screen.STORAGE_NAME, Context.MODE_PRIVATE);
         rules = loadRules();
         blockUnknown=prefs.getBoolean("firewall_block_unknown",false);
     }

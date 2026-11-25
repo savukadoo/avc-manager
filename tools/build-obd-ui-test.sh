@@ -21,12 +21,11 @@ qa_tools="${BUILD_TOOLS:-/private/tmp/cc3-build-tools/build-tools/android-15}"
 export JAVA_HOME="$qa_java"
 out="$PWD/build"
 source "$PWD/tools/signing-options.sh"
-qa_key="$signing_key"
 qa_output="${1:-$PWD/build/qa-obd/CC3-Obd-Ui-QA.apk}"
 qa_work="$(mktemp -d "${TMPDIR:-/tmp}/cc3-obd-ui-apk.XXXXXX")"
 trap 'rm -rf "$qa_work"' EXIT
 mkdir -p "$qa_work/interface" "$qa_work/test" "$qa_work/dex" "$(dirname "$qa_output")"
-[[ -r "$qa_key" ]] || { echo "Manager signing key not found: $qa_key" >&2; exit 1; }
+[[ -r "$signing_key" ]] || { echo "Manager signing key not found: $signing_key" >&2; exit 1; }
 
 cat > "$qa_work/AndroidManifest.xml" <<'MANIFEST'
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" package="local.cc3.manager.obdqa">
@@ -74,8 +73,7 @@ PY
   --version-code 1 --version-name 1.0-qa -o "$qa_work/base.apk"
 (cd "$qa_work/dex" && /usr/bin/zip -q -0 "$qa_work/base.apk" classes.dex)
 "$qa_tools/zipalign" -f 4 "$qa_work/base.apk" "$qa_work/aligned.apk"
-"$qa_tools/apksigner" sign --ks "$qa_key" --ks-key-alias "$signing_alias" \
-  "${signing_password[@]}" --out "$qa_output" "$qa_work/aligned.apk"
+"$qa_tools/apksigner" sign "${signing_options[@]}" --out "$qa_output" "$qa_work/aligned.apk"
 "$qa_tools/apksigner" verify --min-sdk-version 29 --verbose "$qa_output"
 printf '\nQA APK: %s\n' "$qa_output"
 printf '%s\n' 'Install ONLY on emulator. Run: adb -s emulator-5558 shell am instrument -w -e durationSec 120 local.cc3.manager.obdqa/local.cc3.manager.obdqa.ObdUiHarness'
