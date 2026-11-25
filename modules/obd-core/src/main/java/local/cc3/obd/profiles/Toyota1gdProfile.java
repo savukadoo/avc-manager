@@ -123,7 +123,8 @@ public final class Toyota1gdProfile {
                                         + "diagnosis or warning thresholds.")),
                 Arrays.asList("atf_pan", "dpf_soot", "reported_gear", "dpf_pressure_toyota",
                         "fuel_rail_actual", "injector_1", "dpf_inlet_temp"),
-                "7E8", ".*CAN.*11/.*", "7DF");
+                "7E8", ".*CAN.*11/.*", "7DF",
+                "Toyota", "2.8 L diesel · 1GD-FTV · early 130 kW", "Fortuner", "Hilux", "Prado");
     }
     private Toyota1gdProfile() {}
 }

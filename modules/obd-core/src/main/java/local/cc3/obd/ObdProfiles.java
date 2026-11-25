@@ -7,12 +7,16 @@ import local.cc3.obd.profiles.Toyota1gdProfile;
 public final class ObdProfiles {
     private static final List<ObdVehicleProfile> ALL = Collections.unmodifiableList(
             Arrays.asList(GenericObdProfile.create(), Toyota1gdProfile.create()));
+    private static final ObdVehicleCatalog CATALOG = new ObdVehicleCatalog(ALL);
     private static final List<ObdPid> SENSORS = sensors();
     public static List<ObdVehicleProfile> all() {
         return ALL;
     }
     public static ObdVehicleProfile standard() {
         return ALL.get(0);
+    }
+    public static ObdVehicleCatalog catalog() {
+        return CATALOG;
     }
     public static ObdVehicleProfile byId(String id) {
         for (ObdVehicleProfile p : ALL)
@@ -41,6 +45,8 @@ public final class ObdProfiles {
         for (ObdVehicleProfile p : ALL) {
             if (!ids.add(p.id))
                 throw new IllegalArgumentException("Duplicate profile ID");
+            if (p != standard() && p.models.isEmpty())
+                throw new IllegalArgumentException("Vehicle fitment is required for profile: " + p.id);
             for (ObdPid sensor : p.sensors) {
                 ObdPid previous = sensors.putIfAbsent(sensor.id, sensor);
                 if (previous != null && previous != sensor)

@@ -10,6 +10,8 @@ import java.util.Set;
 /** Immutable, compiled read-only vehicle definition, independent of Android and adapter brand. */
 public final class ObdVehicleProfile {
     public final String id, label, description, sources, primaryEcu, protocolPattern, functionalHeader;
+    public final String manufacturer, engine;
+    public final List<String> models;
     public final List<ObdPid> sensors;
     public final List<ObdCategory> categories;
     public final List<String> directProbeIds;
@@ -17,6 +19,14 @@ public final class ObdVehicleProfile {
     public ObdVehicleProfile(String id, String label, String description, String sources,
             List<ObdPid> sensors, List<ObdCategory> categories, List<String> directProbeIds,
             String primaryEcu, String protocolPattern, String functionalHeader) {
+        this(id, label, description, sources, sensors, categories, directProbeIds, primaryEcu,
+                protocolPattern, functionalHeader, "", "");
+    }
+
+    public ObdVehicleProfile(String id, String label, String description, String sources,
+            List<ObdPid> sensors, List<ObdCategory> categories, List<String> directProbeIds,
+            String primaryEcu, String protocolPattern, String functionalHeader,
+            String manufacturer, String engine, String... models) {
         if (id == null || !id.matches("[a-z0-9_.-]{1,80}"))
             throw new IllegalArgumentException("Profile ID");
         this.id = id;
@@ -26,6 +36,19 @@ public final class ObdVehicleProfile {
         this.primaryEcu = primaryEcu;
         this.protocolPattern = protocolPattern;
         this.functionalHeader = functionalHeader;
+        this.manufacturer = manufacturer.trim();
+        this.engine = engine.trim();
+        boolean listed = models.length > 0;
+        if (listed != !this.manufacturer.isEmpty() || listed != !this.engine.isEmpty())
+            throw new IllegalArgumentException("A listed profile needs a manufacturer, models and engine");
+        List<String> modelNames = new ArrayList<>(models.length);
+        for (String model : models) {
+            String name = model.trim();
+            if (name.isEmpty())
+                throw new IllegalArgumentException("Vehicle model is required");
+            modelNames.add(name);
+        }
+        this.models = Collections.unmodifiableList(modelNames);
         this.sensors = Collections.unmodifiableList(new ArrayList<>(sensors));
         this.categories = Collections.unmodifiableList(new ArrayList<>(categories));
         this.directProbeIds = Collections.unmodifiableList(new ArrayList<>(directProbeIds));
@@ -54,6 +77,14 @@ public final class ObdVehicleProfile {
             java.util.regex.Pattern.compile(protocolPattern);
         if (!functionalHeader.isEmpty() && !ObdPid.validHeader(functionalHeader))
             throw new IllegalArgumentException("Functional header");
+    }
+
+    /** Resolves the saved model to its display name, or an empty string when no model is selected. */
+    public String modelName(String name) {
+        for (String model : models)
+            if (model.equalsIgnoreCase(name))
+                return model;
+        return "";
     }
 
     public ObdPid sensor(String id) {

@@ -26,7 +26,7 @@ cp LICENSE NOTICE LICENSES/*.txt "$work/legal-assets/licenses/"
 sed -n '1,/^\*\//p' "$vendor/third_party/uthash.h" > "$work/legal-assets/licenses/uthash-BSD-1-Clause.txt"
 "$BUILD_TOOLS/aapt2" compile --dir app/src/main/res -o "$work/resources.zip"
 "$BUILD_TOOLS/aapt2" link -I "$ANDROID_JAR" --manifest app/src/main/AndroidManifest.xml \
-  --java "$work/gen" --version-code 61 --version-name 0.5.18 \
+  --java "$work/gen" --version-code 62 --version-name 0.5.19 \
   -A app/src/main/assets -A "$work/legal-assets" -0 bin -o "$work/base.apk" "$work/resources.zip"
 sources=()
 while IFS= read -r -d '' file; do sources+=("$file"); done < <(find app/src/main/java modules/obd-core/src/main/java modules/obd-android/src/main/java "$work/gen" -name '*.java' -print0)

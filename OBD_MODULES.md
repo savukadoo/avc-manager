@@ -1,6 +1,6 @@
 # Extending AVC Manager's OBD support
 
-The OBD feature is split into an Android-independent engine, a Bluetooth transport module, compiled vehicle profiles and the Manager UI. Adding a car or a Bluetooth UART layout does not require editing the polling engine. This work prepares the code for reuse; it does not publish a repository or select a new project licence.
+The OBD feature is split into an Android-independent engine, a Bluetooth transport module, compiled vehicle profiles and the Manager UI. A profile declares where it appears in the manufacturer, model and engine picker. Contributors can add cars and Bluetooth UART layouts independently of the polling engine.
 
 ```mermaid
 flowchart LR
@@ -25,26 +25,55 @@ The standalone core can be used with another application or a different implemen
 ## Included profiles and migration
 
 - **Standard OBD-II** is the default for a new installation. It sends setup, standard discovery, declared advertised standard sensors and explicitly requested fault reads. It sends no manufacturer requests, physical header changes or unadvertised direct probes.
-- **Toyota1GD · earlier130kW** contains the fixed earlier-1GD candidates used for this2018 Fortuner2.8 automatic. Enhanced probes require primary ECU7E8 on11-bit CAN. Toyota readings remain experimental until compared with an appropriate reference scanner.
+- **Toyota → Fortuner, Hilux or Prado → 2.8 L diesel · 1GD-FTV · early 130 kW** offers the same engine definition for applicable early variants. It contains the fixed candidates used for the 2018 Fortuner 2.8 L automatic. Enhanced probes require primary ECU `7E8` on 11-bit CAN. Toyota readings remain experimental until compared with an appropriate reference scanner.
 - An existing installation's saved `obd_toyota_1gd` preference is migrated to `obd_vehicle_profile`. Existing CC3 configurations with a saved adapter and no explicit legacy flag retain their previous Toyota default. An explicit legacy false stays Standard. Unknown new profile IDs fall back to Standard.
-- The saved adapter address/name/transport, Auto-connect preference, units, refresh target, dashboard count, styles and retained metric IDs are preserved. A metric absent from the new profile falls back to an available default. Changing profiles cancels the old connection and clears its support/readings/history; the UI requires a deliberate reconnect. The Auto-connect preference itself is not erased.
+- The original profile ID is preserved. The chosen model is saved separately. If an upgrade finds a saved Toyota profile without a model, it shows the existing engine profile until the user chooses their model.
+- The saved adapter address/name/transport, Auto-connect preference, units, refresh target, dashboard count, styles and retained metric IDs are preserved. A metric absent from the new profile falls back to an available default. Choosing a different vehicle cancels the old connection and clears its support, readings and history. Reconnect from Vehicle settings.
 
 For the owner's Toyota profile, oil temperature,018B regeneration fields, service-regen status and inferred/unmapped regeneration counters have been removed. The misleading signed017A pressure comparison is also excluded from that profile. Other cars may still discover standard oil temperature and signed017A pressure when advertised. No Toyota-only formula is applied globally.
 
 ## Settings and monitoring
 
-**Controls → Vehicle** contains the current profile, **Choose profile**, saved adapter, connection type, Auto-connect, scan and Connect/Disconnect/Pause/Resume controls. The main **Vehicle** page contains Dashboard, Sensors and Faults. Its status badge opens Vehicle settings directly. One engine and transport owner serve both views; this direct transition keeps the session running. Leaving both areas disconnects. Changing the profile clears old session data and requires reconnecting from Vehicle settings.
+In **Controls → Vehicle → Choose profile**, choose a manufacturer, then the vehicle model, then the engine. The engine tap saves the choice. **Standard OBD-II** is available directly from the first screen for any car. **Sources** shows the evidence for the active profile. Browsing and going Back keep the current session active.
+
+**Controls → Vehicle** also holds the saved adapter, connection type, Auto-connect and monitoring controls. The status badge on the main **Vehicle** page opens these settings while keeping the session running. Leaving both areas disconnects.
 
 ## Add a vehicle profile
 
-1. Add a Java factory beside `profiles/GenericObdProfile.java` and `profiles/Toyota1gdProfile.java`. Return an immutable `ObdVehicleProfile` with a unique ID, user-facing name, applicability description and source attribution.
-2. Reuse `StandardSensors.all()` entries as the same objects where appropriate. Add manufacturer-specific `ObdPid` definitions only for requests and formulas you have checked. Use namespaced IDs such as `yourmake.rail_pressure`; do not collide with another profile's differently defined sensor.
-3. Each sensor declares service/identifier, minimum data length, units/range, minimum interval, decoder, optional physical request header/expected reply source, origin label, confidence and category. Enhanced addressing and experimental confidence are separate; the overload with an explicit experimental flag supports a reference-validated decoder without changing its addressing. `Decoder.decode` receives **only data bytes**: index0=A, index1=B, and so on. The core checks the positive response service/identifier and minimum length first. Throw an exception for absent fields or unknown enum states; never invent zero.
-4. Service01 and21 identifiers are one byte; service22 identifiers are two bytes. Only these sensor-read services can be registered. Physical11-bit/29-bit CAN and six-hex-character legacy header values are explicitly validated; the engine uses only exact headers declared by the selected profile and restores that profile's functional header before standard/fault requests.
-5. Put the expected primary ECU/protocol condition in the profile. Enhanced discovery requires that condition to match. `directProbeIds` is a small fixed probe set, not a PID sweep. The normal Standard profile's direct set is empty.
-6. Optional `ObdCategory` entries supply a title, default primary sensor and help text. Sensors sharing that category automatically get one dashboard category with related graphs and an explicit **Use on card** action; the UI needs no new category-specific code.
-7. Register the factory in `ObdProfiles.ALL`. The Vehicle profile picker, sensor list, dashboard choices, detail screens and exports use its definitions. Record source/definition changes; keep old IDs only when their meaning is preserved.
-8. Add source-capture decoder tests and an independent fake-link session test. Cover short/malformed replies, other ECU replies, unsupported fields, units, cancellation, profile isolation and header restoration. Compare actual data with a reference tool before labelling the physical meaning/scale validated.
+1. Add a Java factory beside [Toyota1gdProfile.java](modules/obd-core/src/main/java/local/cc3/obd/profiles/Toyota1gdProfile.java). Give the profile a stable, unique ID, a short label for existing installations, an applicability description and source attribution.
+2. Pass the manufacturer, engine display label and one or more model names as the final constructor arguments. Share a profile across models only when they use the same sensor definitions and ECU addressing. Use a separate profile ID and distinct engine option for variants that need different requests or decoding. Include year range, power output, market or transmission in the engine label when needed to tell variants apart. The picker groups names case-insensitively. Each manufacturer/model/engine path must be unique.
+3. Register your factory in [`ObdProfiles.ALL`](modules/obd-core/src/main/java/local/cc3/obd/ObdProfiles.java), keeping Standard OBD-II first. Build the app and open **Controls → Vehicle → Choose profile** to check the new path. The dashboard, sensor list and report use the selected profile's definitions.
+
+This example registers two fictional models under the same engine. It uses standard sensors as a starting point.
+
+```java
+package local.cc3.obd.profiles;
+
+import java.util.Collections;
+import local.cc3.obd.ObdVehicleProfile;
+
+public final class ExampleProfile {
+    public static ObdVehicleProfile create() {
+        ObdVehicleProfile standard = GenericObdProfile.create();
+        return new ObdVehicleProfile(
+                "example-diesel-e20", "Example Motors E20",
+                "Example 2.0 L diesel fitment.", "Standard OBD-II sensor definitions.",
+                standard.sensors, standard.categories, Collections.emptyList(),
+                "", "", "",
+                "Example Motors", "2.0 L diesel · E20", "Model A", "Model B");
+    }
+}
+```
+
+Add `ExampleProfile.create()` to the list of factories and import its class in `ObdProfiles.java`. Replace the example fitment and source description with details for your own vehicle.
+
+### Add manufacturer-specific sensors
+
+- Reuse the existing standard sensor objects, as in the example. Give each custom `ObdPid` a namespaced ID such as `example.e20.rail_pressure`. Keep an ID stable while its meaning stays the same.
+- Define the read service and identifier, required data length, units, range, minimum interval, decoder and origin. Include the physical request header and expected response ECU where needed. Services `01` and `21` use one-byte identifiers, and `22` uses two. `Decoder.decode` receives the data bytes starting with A at index 0. Throw on missing fields or unknown enum values so the app can distinguish unavailable data from a real zero.
+- Specify the matching primary ECU and protocol in the profile. Keep `directProbeIds` to a small set of known reads. The engine uses the selected profile's exact read commands and restores the declared functional header for standard and fault requests.
+- Use an `ObdCategory` when readings belong together. It defines a default card metric and related graphs. The user can change the primary reading with **Use on card**.
+- Add decoder tests using captured replies and a fake-link session test. Cover short replies, unexpected reply ECUs, unsupported readings, units and header restoration. Compare values with a reference scanner before marking a definition validated.
 
 The core's command policy is built from the **selected profile**, not the union of registered cars. Merely compiling a Toyota profile does not authorize its commands on the Standard profile. The reply parser does no I/O; only a policy-checked engine query reaches `ObdLink.write`.
 

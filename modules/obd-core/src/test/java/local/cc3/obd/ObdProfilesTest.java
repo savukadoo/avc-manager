@@ -13,6 +13,7 @@ public final class ObdProfilesTest {
     public static void main(String[] args) throws Exception {
         definitions();
         migrationAndBoundaries();
+        catalogChoices();
         fuelAndInjectors();
         partialAndWrongSource();
         extensionAndSwitch();
@@ -98,10 +99,12 @@ public final class ObdProfilesTest {
                 "Unknown saved profile fails to generic");
         for (ObdVehicleProfile profile : ObdProfiles.all()) {
             ObdCommandPolicy policy = new ObdCommandPolicy(profile);
-            for (String command :
-                    new String[] {"04", "0902", "2151", "018B", "221F5C", "3101", "ATMA", "010C\r04"})
+            for (String command : new String[] {"04", "0902", "3101", "ATMA", "010C\r04"})
                 denied(() -> policy.allow(command));
         }
+        ObdCommandPolicy toyotaPolicy = new ObdCommandPolicy(TOYOTA);
+        for (String command : new String[] {"2151", "018B", "221F5C"})
+            denied(() -> toyotaPolicy.allow(command));
         for (String command : new String[] {"2105", "213D", "2182", "ATSH7E0"})
             denied(() -> new ObdCommandPolicy(ObdProfiles.standard()).allow(command));
         for (ObdPid pid : TOYOTA.sensors)
@@ -174,6 +177,41 @@ public final class ObdProfilesTest {
                     "Another ECU cannot supply selected Toyota fields");
         }
     }
+    private static void catalogChoices() {
+        ObdVehicleCatalog catalog = ObdProfiles.catalog();
+        check(ObdProfiles.standard().models.isEmpty() && catalog.manufacturers().contains("Toyota"),
+                "Standard is a separate choice");
+        for (String model : Arrays.asList("Fortuner", "Hilux", "Prado"))
+            check(catalog.models("toyota").contains(model) && catalog.engines("Toyota", model).contains(TOYOTA),
+                    "Existing Toyota engine ID under " + model);
+        check(TOYOTA.modelName("hilux").equals("Hilux") && TOYOTA.modelName("Corolla").isEmpty(),
+                "Saved model restores only when declared for the profile");
+
+        ObdVehicleProfile otherEngine = catalogProfile("demo-engine", "toyota", "Example engine", "fortuner");
+        ObdVehicleProfile otherMake = catalogProfile("demo-make", "Example Motors", "Example engine", "Fortuner");
+        ObdVehicleCatalog extended = new ObdVehicleCatalog(Arrays.asList(TOYOTA, otherEngine, otherMake));
+        check(new ArrayList<>(extended.manufacturers()).equals(Arrays.asList("Example Motors", "Toyota")),
+                "Manufacturer names are grouped case-insensitively");
+        check(new ArrayList<>(extended.models("toyota")).equals(Arrays.asList("Fortuner", "Hilux", "Prado")),
+                "Model names are grouped and sorted within the manufacturer");
+        check(new ArrayList<>(extended.engines("TOYOTA", "fortuner")).equals(Arrays.asList(TOYOTA, otherEngine)),
+                "Different engines appear under the same make and model");
+        check(!extended.engines("Toyota", "Hilux").contains(otherEngine), "Engine variants stay with their models");
+        check(new ArrayList<>(extended.engines("Example Motors", "Fortuner")).equals(Arrays.asList(otherMake)),
+                "Equal model names stay separate across manufacturers");
+        check(extended.models("Unknown").isEmpty() && extended.engines("Toyota", "Unknown").isEmpty(),
+                "Unknown catalog branches return no matches");
+        denied(() -> new ObdVehicleCatalog(Arrays.asList(TOYOTA,
+                             catalogProfile("duplicate", "toyota", TOYOTA.engine, "FORTUNER"))));
+        denied(() -> catalogProfile("missing-engine", "Toyota", " ", "Fortuner"));
+    }
+
+    private static ObdVehicleProfile catalogProfile(String id, String manufacturer, String engine, String model) {
+        ObdVehicleProfile standard = ObdProfiles.standard();
+        return new ObdVehicleProfile(id, id, "Test profile", "Test fixture", standard.sensors,
+                standard.categories, Collections.emptyList(), "", "", "", manufacturer, engine, model);
+    }
+
     private static void extensionAndSwitch() throws Exception {
         ObdPid custom = new ObdPid("demo.rpm", "Demo RPM", "rpm", 0, 10000, 0x22, 0xF40C, 2, 1000,
                 a
@@ -200,10 +238,24 @@ public final class ObdProfilesTest {
                     "Declared response ECU distinct from primary");
             engine.setRefreshCycleMillis(1000);
             check(engine.snapshot().profileId.equals(demo.id), "Snapshot identifies compiled profile");
+            engine.setProfile(demo);
+            check(!link.closed && engine.snapshot().readings.containsKey(custom.id),
+                    "Reselecting the same profile keeps its session");
+            engine.setProfile(demo, true);
+            check(link.closed && engine.snapshot().profileId.equals(demo.id)
+                            && engine.snapshot().readings.isEmpty()
+                            && engine.minuteHistory(custom.id, System.currentTimeMillis())
+                                       .stream()
+                                       .allMatch(m -> m.samples == 0),
+                    "Changing to a different vehicle clears its predecessor's session even with shared definitions");
+            Link replacement = new Link();
+            replacement.responses.putAll(link.responses);
+            engine.connect(replacement);
+            await(() -> engine.snapshot().readings.containsKey(custom.id), 10000);
             engine.setProfile(ObdProfiles.standard());
-            int count = link.commands.size();
+            int count = replacement.commands.size();
             Thread.sleep(350);
-            check(link.closed && link.commands.size() == count,
+            check(replacement.closed && replacement.commands.size() == count,
                     "Profile switch closes/cancels old transport");
             check(engine.snapshot().readings.isEmpty()
                             && engine.minuteHistory(custom.id, System.currentTimeMillis())

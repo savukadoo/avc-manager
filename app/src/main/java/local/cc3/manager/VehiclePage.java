@@ -475,39 +475,90 @@ final class VehiclePage {
     }
 
     private void showVehicleProfiles() {
-        Screen.PanelDialog panel = activity.new PanelDialog("Vehicle profile", 900,
-                "Choose the profile for this vehicle. Standard OBD-II sends no manufacturer requests. "
-                        + "Enhanced profiles use fixed read-only requests and apply only to matching "
-                        + "ECUs/protocols. "
-                        + "Changing profiles disconnects the adapter and clears the current session; "
-                        + "reconnect here in Vehicle settings. Saved adapter and dashboard settings are retained.");
-        for (ObdVehicleProfile profile : ObdProfiles.all()) {
-            boolean selected = engine.profile().id.equals(profile.id);
-            Button choice = activity.button(profile.label + (selected ? "  ✓" : ""), false, () -> {
-                if (engine.profile().id.equals(profile.id)) {
-                    panel.dismiss();
-                    return;
-                }
-                reconnect.suppress();
-                VehicleProfiles.select(activity.prefs(),engine,profile);
-                snapshot = engine.snapshot();
-                verified = false;
-                faultRequestPending = false;
-                loadConfiguration();
+        Screen.PanelDialog panel = activity.new PanelDialog("Choose manufacturer", 820,
+                "Standard OBD-II reads common sensors. Manufacturer profiles add readings on matching ECUs. "
+                        + "After changing the vehicle, reconnect your saved adapter in Vehicle settings.");
+        panel.setCanceledOnTouchOutside(false);
+        ObdVehicleProfile current = engine.profile();
+        ObdVehicleProfile standard = ObdProfiles.standard();
+        panel.message("Current · " + VehicleProfiles.label(activity.prefs(), current, " · "));
+        for (String manufacturer : ObdProfiles.catalog().manufacturers()) {
+            profileOption(panel, manufacturer, manufacturer.equalsIgnoreCase(current.manufacturer), true, () -> {
                 panel.dismiss();
-                showTab(controlsMode?"Adapter":"Sensors");
+                showVehicleModels(manufacturer);
             });
-            choice.setSelected(selected);
-            activity.styleButton(choice, activity.colors, false, false, selected);
-            addSpaced(panel.body, choice, 6);
-            TextView help = line(profile.description, 13, activity.colors.muted, 450);
-            help.setSingleLine(false);
-            help.setEllipsize(null);
-            addSpaced(panel.body, help, 4);
         }
+        profileOption(panel, standard.label, standard == current, false,
+                () -> selectVehicle(panel, standard, ""));
         panel.action("Sources", false, this::showProfileSources);
-        panel.action("Close", true, panel::dismiss);
+        panel.action("Close", false, panel::dismiss);
         showDialog(panel);
+    }
+
+    private void showVehicleModels(String manufacturer) {
+        Screen.PanelDialog panel = vehiclePickerStep("Choose model", this::showVehicleProfiles);
+        panel.message(manufacturer);
+        ObdVehicleProfile current = engine.profile();
+        String currentModel = VehicleProfiles.model(activity.prefs(), current);
+        for (String model : ObdProfiles.catalog().models(manufacturer)) {
+            boolean selected = manufacturer.equalsIgnoreCase(current.manufacturer)
+                    && model.equalsIgnoreCase(currentModel);
+            profileOption(panel, model, selected, true, () -> {
+                panel.dismiss();
+                showVehicleEngines(manufacturer, model);
+            });
+        }
+        showDialog(panel);
+    }
+
+    private void showVehicleEngines(String manufacturer, String model) {
+        Screen.PanelDialog panel = vehiclePickerStep("Choose engine", () -> showVehicleModels(manufacturer));
+        panel.message(manufacturer + "  ›  " + model);
+        ObdVehicleProfile current = engine.profile();
+        String currentModel = VehicleProfiles.model(activity.prefs(), current);
+        for (ObdVehicleProfile profile : ObdProfiles.catalog().engines(manufacturer, model)) {
+            profileOption(panel, profile.engine, profile == current && model.equalsIgnoreCase(currentModel), false,
+                    () -> selectVehicle(panel, profile, model));
+            TextView description = activity.text(profile.description, 14, activity.colors.muted, 450);
+            description.setPadding(dp(4), 0, dp(4), dp(4));
+            addSpaced(panel.body, description, 8);
+        }
+        showDialog(panel);
+    }
+
+    private Screen.PanelDialog vehiclePickerStep(String title, Runnable back) {
+        Screen.PanelDialog panel = activity.new PanelDialog(title, 820);
+        panel.setCanceledOnTouchOutside(false);
+        panel.setOnCancelListener(dialog -> back.run());
+        panel.action("Back", false, () -> {
+            panel.dismiss();
+            back.run();
+        });
+        panel.action("Close", false, panel::dismiss);
+        return panel;
+    }
+
+    private void profileOption(Screen.PanelDialog panel, String label, boolean selected, boolean more,
+            Runnable action) {
+        Button option = activity.button(label + (selected ? "  ✓" : "") + (more ? "  ›" : ""), false, action);
+        option.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
+        option.setMinHeight(dp(64));
+        option.setSelected(selected);
+        activity.styleButton(option, activity.colors, false, false, selected);
+        addSpaced(panel.body, option, 8);
+    }
+
+    private void selectVehicle(Screen.PanelDialog panel, ObdVehicleProfile profile, String model) {
+        panel.dismiss();
+        if (engine.profile() == profile && model.equalsIgnoreCase(VehicleProfiles.model(activity.prefs(), profile)))
+            return;
+        reconnect.suppress();
+        VehicleProfiles.select(activity.prefs(), engine, profile, model);
+        snapshot = engine.snapshot();
+        verified = false;
+        faultRequestPending = false;
+        loadConfiguration();
+        showTab(controlsMode ? "Adapter" : "Sensors");
     }
 
     private void showProfileSources() {
@@ -664,7 +715,11 @@ final class VehiclePage {
         overview.setGravity(Gravity.TOP);
         LinearLayout profile = activity.card();
         profile.addView(line("Vehicle profile", 13, activity.colors.muted, 500));
-        TextView profileName = line(engine.profile().label, 17, activity.colors.ink, 650);
+        TextView profileName = activity.text(VehicleProfiles.label(activity.prefs(), engine.profile(), "\n"), 17,
+                activity.colors.ink, 650);
+        profileName.setMaxLines(2);
+        profileName.setEllipsize(TextUtils.TruncateAt.END);
+        profileName.setGravity(Gravity.CENTER_VERTICAL);
         profile.addView(profileName, new LinearLayout.LayoutParams(-1, 0, 1));
         profile.addView(activity.button("Choose profile", false, this::showVehicleProfiles),
                 new LinearLayout.LayoutParams(-1, dp(56)));
@@ -731,7 +786,7 @@ final class VehiclePage {
 
     private void showConnectionDetails() {
         Screen.PanelDialog panel = activity.new PanelDialog("Connection details", 800);
-        String details = "Profile · " + engine.profile().label;
+        String details = "Profile · " + VehicleProfiles.label(activity.prefs(), engine.profile(), " · ");
         if (snapshot != null) {
             if (!clean(snapshot.adapterInfo).isEmpty()) details += "\n" + clean(snapshot.adapterInfo);
             if (!clean(snapshot.protocol).isEmpty()) details += "\nProtocol · " + clean(snapshot.protocol);

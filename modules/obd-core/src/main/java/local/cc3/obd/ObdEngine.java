@@ -264,6 +264,11 @@ public final class ObdEngine implements Closeable {
 
     /** A profile change cancels the old session before any new profile may issue requests. */
     public void setProfile(ObdVehicleProfile next) {
+        setProfile(next, false);
+    }
+
+    /** A new vehicle starts a fresh session even when it shares the same profile. */
+    public void setProfile(ObdVehicleProfile next, boolean vehicleChanged) {
         if (next == null)
             throw new IllegalArgumentException("Vehicle profile is required");
         Session previous;
@@ -271,7 +276,7 @@ public final class ObdEngine implements Closeable {
         synchronized (lock) {
             if (closed)
                 throw new IllegalStateException("OBD engine is closed");
-            if (profile == next)
+            if (profile == next && !vehicleChanged)
                 return;
             previous = active;
             if (previous != null)

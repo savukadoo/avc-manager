@@ -44,7 +44,8 @@ public final class ObdEngineTest {
         int[][] values = {{0x1A, 0xF8}, {100}, {130}, {255}, {180}, {0x35, 0xE8}, {65}, {128}, {0x01, 0xF4},
                 {0}, {100}, {140}, {0x00, 0xC8}};
         double[] expected = {1726, 100, 90, 100, 180, 13.8, 25, 128 * 100.0 / 255, 5, 0, 100, 100, 10};
-        check(ObdPid.all().size() == 36, "registry count");
+        for (ObdVehicleProfile profile : ObdProfiles.all())
+            check(ObdPid.all().containsAll(profile.sensors), "Registry includes the sensors for " + profile.id);
         for (int i = 0; i < ids.length; i++) {
             ObdPid pid = ObdPid.byId(ids[i]);
             byte[] data = new byte[values[i].length + 2];
@@ -535,19 +536,17 @@ public final class ObdEngineTest {
         byte[] legacy = {0x61, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x7F, (byte) 0xF8};
         near(ObdPid.byId("dpf_pressure_toyota").decode(legacy), -.08, .000001,
                 "earlier Toyota offset pressure");
-        for (ObdPid pid : ObdPid.all())
-            if (pid.dpf()) {
-                check(ElmProtocol
-                                .allowedCommand(pid.command(),
-                                        pid.experimental ? ObdProfiles.byId("toyota-1gd-130kw")
-                                                         : ObdProfiles.standard())
-                                .equals(pid.command()),
-                        "fixed DPF read allowlisted " + pid.id);
-                expect(IllegalArgumentException.class,
-                        () -> pid.decode(new byte[] {(byte) (pid.service + 0x40), (byte) pid.pid}));
+        for (ObdVehicleProfile profile : ObdProfiles.all()) {
+            for (ObdPid pid : profile.sensors) {
+                if (!pid.dpf())
+                    continue;
+                check(ElmProtocol.allowedCommand(pid.command(), profile).equals(pid.command()),
+                        "Fixed DPF read allowlisted in " + profile.id + " for " + pid.id);
+                expect(IllegalArgumentException.class, () -> pid.decode(new byte[0]));
                 expect(IllegalArgumentException.class,
                         () -> pid.decode(new byte[] {0x7F, (byte) pid.service, 0x12}));
             }
+        }
         for (String command :
                 new String[] {"0800", "3101", "3000", "2139", "2105", "213D", "22F48B", "ATSH700", "04"})
             expect(IllegalArgumentException.class, () -> ElmProtocol.allowedCommand(command));

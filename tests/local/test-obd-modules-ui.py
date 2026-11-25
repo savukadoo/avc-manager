@@ -2,9 +2,11 @@
 """Emulator-only native profile/category acceptance; real engine decodes local synthetic replies."""
 from pathlib import Path
 import subprocess,json,time,csv,io,os,xml.etree.ElementTree as E
-ROOT=Path(__file__).resolve().parents[2];OUT=Path(os.environ.get('CC3_QA_OUTPUT',str(ROOT/'build/qa-0.5.0')));ADB='/private/tmp/cc3-build-tools/platform-tools/platform-tools/adb'
+ROOT=Path(__file__).resolve().parents[2];OUT=Path(os.environ.get('CC3_QA_OUTPUT',str(ROOT/'build/qa-0.5.0')))
+ADB=os.environ.get('CC3_QA_ADB','/private/tmp/cc3-build-tools/platform-tools/platform-tools/adb')
+SERIAL=os.environ.get('CC3_QA_SERIAL','emulator-5558')
 def adb(*args,raw=False):
- r=subprocess.run([ADB,'-s','emulator-5558',*args],capture_output=True,timeout=40)
+ r=subprocess.run([ADB,'-s',SERIAL,*args],capture_output=True,timeout=40)
  if r.returncode:raise RuntimeError(r.stdout.decode()+r.stderr.decode())
  return r.stdout if raw else r.stdout.decode().strip()
 def state():return json.loads(adb('shell','cat','/data/user/0/local.cc3.manager/files/obd-qa-ui.json'))
@@ -43,6 +45,7 @@ def fits(s):
  return all(n['bounds'][0]>=0 and n['bounds'][1]>=60 and n['bounds'][2]<=1280 and n['bounds'][3]<=720 and n['bounds']==n['visibleBounds'] for n in s['nodes'] if n['clickable'] and n['enabled'])
 if __name__=='__main__':
  assert adb('shell','getprop','ro.kernel.qemu')=='1'
+ OUT.mkdir(parents=True,exist_ok=True)
  s=wait(lambda s:any(n['class'].endswith('ObdGaugeView') for n in s['nodes']))
  check(len([n for n in s['nodes'] if n['class'].endswith('ObdGaugeView')])==9,'Nine migrated dashboard cards retained')
  check(any(n['bounds']==[0,60,1280,720] for n in s['nodes']),'Correct CC3 usable screen bounds')
@@ -78,8 +81,31 @@ if __name__=='__main__':
  tap('Use on card');tap('Close');check(any('Injectors · Cylinder 3' in n['contentDesc'] for n in nodes()),'Selected injector persists as single card primary')
  settings();check(has(state(),'Vehicle settings') and has(state(),'Pause'),'Status badge opens adapter settings under Controls')
  check(state()['same_engine'] and state()['phase']=='MONITORING','Settings transition preserves the live engine and connection')
- tap('Choose profile');s=capture('vehicle-profile-picker')
- check(has(s,'Standard OBD-II') and any(n['text'].startswith('Toyota 1GD') and n['selected'] for n in s['nodes']),'Vehicle profiles are named and current selection marked')
+ tap('Choose profile');s=capture('vehicle-manufacturer-picker')
+ check(has(s,'Choose manufacturer') and has(s,'Standard OBD-II')
+       and any(n['text'].startswith('Toyota') and n['selected'] for n in s['nodes']),
+       'Existing Toyota selection is marked alongside the standard profile')
+ check(fits(s),'Manufacturer choices fit the CC3 viewport')
+ tap('Toyota',True);s=capture('vehicle-model-picker')
+ check(has(s,'Choose model') and all(any(n['text'].startswith(model) and n['clickable'] for n in s['nodes'])
+       for model in ('Fortuner','Hilux','Prado')),'Toyota lists all three supported model paths')
+ check(fits(s),'Model choices fit the CC3 viewport')
+ tap('Fortuner',True);s=capture('vehicle-engine-picker')
+ check(has(s,'Choose engine') and any(n['text'].startswith('2.8 L diesel') for n in s['nodes']),
+       'Fortuner exposes its early 1GD engine')
+ check(fits(s),'Engine details and navigation fit the CC3 viewport')
+ adb('shell','input','keyevent','4');wait(lambda s:has(s,'Choose model'))
+ tap('Back');wait(lambda s:has(s,'Choose manufacturer'))
+ tap('Close');check(state()['phase']=='MONITORING','Browsing and going Back preserves the connection')
+ tap('Choose profile');tap('Toyota',True);tap('Fortuner',True);tap('2.8 L diesel',True)
+ s=wait(lambda s:any(n['text'].startswith('Toyota Fortuner\n2.8 L diesel') for n in s['nodes']))
+ check(s['phase']=='DISCONNECTED','Confirming a model clears the previous session')
+ capture('vehicle-fortuner-selected')
+ tap('Choose profile');tap('Toyota',True)
+ check(any(n['text'].startswith('Fortuner') and n['selected'] for n in nodes()),'The chosen model is selected')
+ tap('Fortuner',True)
+ check(any(n['text'].startswith('2.8 L diesel') and n['selected'] for n in nodes()),'The chosen engine is selected')
+ tap('Back');tap('Back')
  tap('Standard OBD-II');s=wait(lambda s:any('Standard OBD-II' in n['text'] for n in s['nodes']))
  monitoring();s=capture('generic-profile-clears-toyota-values')
  check(not any('Toyota test' in n['contentDesc'] for n in s['nodes']),'Profile switch clears old Toyota values')
