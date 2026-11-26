@@ -15,7 +15,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
-import android.webkit.WebView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import java.io.File;
@@ -36,7 +35,6 @@ import org.json.JSONObject;
  * Emulator-only observation runner, packaged separately from AVC Manager.
  * Plays no media and injects no file/state fixtures. Host QA uploads synthetic files
  * and exercises the real native player using adb taps while this runner observes.
- * Optional debugFixture injects presentation-only status on the emulator; it never arms a lease.
  */
 public final class EntertainmentUiHarness extends Instrumentation {
     private static final String TARGET = "local.cc3.manager";
@@ -49,10 +47,6 @@ public final class EntertainmentUiHarness extends Instrumentation {
     private volatile boolean stopRequested;
     private int dumpEveryMs = 500, sequence;
     private String lastError = "";
-    private Field debugFixtureField;
-    private Object debugFixtureOriginal;
-    private WebView observedMap;
-    private JSONObject mapDocument;
 
     @Override public void onCreate(Bundle supplied) {
         arguments = supplied == null ? new Bundle() : new Bundle(supplied);
@@ -70,22 +64,6 @@ public final class EntertainmentUiHarness extends Instrumentation {
             requireEmulator();
             int seconds = integer("durationSec", 600, 10, 900);
             dumpEveryMs = integer("dumpEveryMs", 500, 100, 10000);
-            String debugFixture = arguments.getString("debugFixture", "none");
-            if (!"none".equals(debugFixture)) {
-                if (!java.util.Arrays.asList("on", "busy", "expired").contains(debugFixture))
-                    throw new IllegalArgumentException("Unknown debugging presentation fixture");
-                ClassLoader loader = getTargetContext().getClassLoader();
-                Class<?> service = loader.loadClass(TARGET + ".WirelessDebugService");
-                Class<?> state = loader.loadClass(TARGET + ".WirelessDebugService$State");
-                java.lang.reflect.Constructor<?> constructor = state.getDeclaredConstructor(boolean.class, boolean.class, String.class, long.class);
-                constructor.setAccessible(true);
-                debugFixtureField = service.getDeclaredField("state"); debugFixtureField.setAccessible(true);
-                debugFixtureOriginal = debugFixtureField.get(null);
-                boolean on = "on".equals(debugFixture), busy = "busy".equals(debugFixture);
-                debugFixtureField.set(null, constructor.newInstance(on, busy,
-                        on ? "Wi-Fi debugging is on" : busy ? "Turning off Wi-Fi debugging…" : "Debugging timer ended",
-                        on ? 732000L : 0L));
-            }
             transferMonitor = addMonitor(TARGET + ".MediaTransferActivity", null, false);
             mainActivity = startActivitySync(new Intent(Intent.ACTION_MAIN)
                     .setComponent(new ComponentName(TARGET, TARGET + ".MainActivity"))
@@ -113,10 +91,6 @@ public final class EntertainmentUiHarness extends Instrumentation {
             finished = true; main.removeCallbacks(periodic);
             try {
                 runOnMain(() -> {
-                    if (debugFixtureField != null) {
-                        try { debugFixtureField.set(null, debugFixtureOriginal); }
-                        catch (IllegalAccessException failure) { throw new IllegalStateException(failure); }
-                    }
                     if (registered) { mainActivity.unregisterReceiver(receiver); registered = false; }
                     if(mainActivity!=null && "true".equalsIgnoreCase(arguments.getString("cleanupTlsIdentity","false"))){
                         try{java.security.KeyStore keys=java.security.KeyStore.getInstance("AndroidKeyStore");keys.load(null);keys.deleteEntry("cc3-media-https-v1");keys.deleteEntry("cc3-media-https-v2");
@@ -158,7 +132,6 @@ public final class EntertainmentUiHarness extends Instrumentation {
             }
             JSONObject output = new JSONObject();
             output.put("emulator_qa", true); output.put("fabricated_media", false);
-            output.put("debug_presentation_fixture", arguments.getString("debugFixture", "none"));
             output.put("captured_at_ms", System.currentTimeMillis()); output.put("sequence", ++sequence);
             output.put("activity", activity.getClass().getName());
             if(activity.getClass().getName().endsWith("DashboardActivity") || activity.getClass().getName().endsWith("DashboardPreviewActivity")){
@@ -187,7 +160,6 @@ public final class EntertainmentUiHarness extends Instrumentation {
             java.lang.reflect.Method fingerprint=transferType.getDeclaredMethod("fingerprint");fingerprint.setAccessible(true);
             transfer.put("certificate_sha256",fingerprint.invoke(null));
             output.put("transfer",transfer);
-            output.put("debug_lease",serviceState("WirelessDebugService"));
             JSONObject firewall=new JSONObject();
             Class<?> firewallType=mainActivity.getClassLoader().loadClass(TARGET+".FirewallService");
             for(String method:new String[]{"modes","status","alwaysOn","lockdown"}){
@@ -208,33 +180,6 @@ public final class EntertainmentUiHarness extends Instrumentation {
             JSONObject foreground = windows.getJSONObject(windows.length() - 1);
             output.put("window", foreground.getString("kind")); output.put("window_class", foreground.getString("class"));
             output.put("nodes", foreground.getJSONArray("nodes"));
-            if (activity.getClass().getName().endsWith("WeatherMapActivity")) {
-                Field mapField = activity.getClass().getDeclaredField("map"); mapField.setAccessible(true);
-                WebView web = (WebView) mapField.get(activity);
-                JSONObject info = new JSONObject(); info.put("present", web != null);
-                if (web != null) {
-                    if (observedMap != web) { observedMap = web; mapDocument = null; }
-                    info.put("url", web.getUrl());
-                    info.put("javascript_enabled", web.getSettings().getJavaScriptEnabled());
-                    info.put("file_access", web.getSettings().getAllowFileAccess());
-                    info.put("content_access", web.getSettings().getAllowContentAccess());
-                    info.put("mixed_content_mode", web.getSettings().getMixedContentMode());
-                    info.put("provider", WebView.getCurrentWebViewPackage() == null ? "unavailable" : WebView.getCurrentWebViewPackage().versionName);
-                    if (mapDocument != null) info.put("document", mapDocument);
-                    web.evaluateJavascript("(function(){return JSON.stringify({title:document.title,ready:document.readyState,"
-                            + "text:document.body?document.body.innerText.slice(0,3500):'',canvases:document.querySelectorAll('canvas').length,"
-                            + "controls:Array.from(document.querySelectorAll('#embed-zoom .zoom-ctrl,.play-pause')).map(function(e){"
-                            + "var r=e.getBoundingClientRect(),b=e.closest('#plugin-radar,#plugin-satellite,#plugin-progress-bar');"
-                            + "return {role:e.classList.contains('play-pause')?'play':e.outerHTML.slice(0,180),"
-                            + "state:e.className,layer:b?b.id:'',x:r.x,y:r.y,w:r.width,h:r.height};}).filter(function(e){return e.w&&e.h}),"
-                            + "map_class:document.body?document.body.className:'',"
-                            + "loaded_images:Array.from(document.images).filter(function(i){return i.complete&&i.naturalWidth>0}).length});})()", value -> {
-                        try { if (observedMap == web) mapDocument = new JSONObject(new JSONArray("[" + value + "]").getString(0)); }
-                        catch (Exception ignored) { /* A navigating document may not be ready for observation. */ }
-                    });
-                } else { observedMap = null; mapDocument = null; }
-                output.put("weather_map", info);
-            }
             File target = new File(mainActivity.getFilesDir(), "mediaqa-ui.json");
             File temporary = new File(mainActivity.getFilesDir(), ".mediaqa-ui.json.tmp");
             try (FileOutputStream stream = new FileOutputStream(temporary)) { stream.write(output.toString().getBytes(StandardCharsets.UTF_8)); }

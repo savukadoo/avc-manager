@@ -220,7 +220,7 @@ final class MobileDataPage {
     }
 
     private String errorMessage(Exception error) {
-        if (error instanceof ConnectException) return "Enable Wi-Fi ADB in Wireless, then try again.";
+        if (error instanceof ConnectException) return "This control needs an authorised local ADB connection supported by your firmware.";
         return error.getMessage() == null ? "Android did not return mobile data information." : error.getMessage();
     }
 

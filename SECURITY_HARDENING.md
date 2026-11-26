@@ -1,12 +1,12 @@
-# AVC Manager 0.5.1 security hardening
+# AVC Manager security and privacy
 
-This guide describes the security changes introduced in version 0.5.1 and the controls available to maintainers and device owners.
+This guide describes the public APK’s security controls and build checks.
 
 ## Implemented changes
 
 | Review item | Result |
 | --- | --- |
-| Wireless debugging exposure | A foreground lease, monotonic deadline, expiry alarm and Wi-Fi callbacks limit explicit access to 15 minutes/the approved connection. The app checks for the ADB authentication challenge and displays selected state/countdown. A reboot never enables debugging. An app update restores only an existing unexpired lease. |
+| Computer maintenance | The app opens Android Developer options. Optional local Hanna and mobile data controls require an ADB connection that presents an authentication challenge. |
 | Plain HTTP uploads | The production listener requires HTTPS. A non-exportable AndroidKeyStore P-256 key supplies the per-device identity. TLS 1.2/1.3 and forward-secret AEAD suites are enabled; session cookies are Secure/HttpOnly/SameSite. The app shows a full certificate fingerprint, with a pinned laptop client for verification before any request is sent. |
 | Slow unauthenticated requests | TLS, headers and pairing have an absolute three-second deadline, per-peer pending limits and separate capacity for paired peer addresses. Per-request authentication/CSRF and bounded streaming remain enforced. |
 | Firewall lifecycle | Optional **Keep protection running** restores rule enforcement after process death, reboot, package replacement and reopening after force-stop. Worker retries retain the old TUN until replacement. Capture is not automatically resumed. Deliberate Stop clears the saved enforcement intent. |
@@ -20,7 +20,7 @@ This guide describes the security changes introduced in version 0.5.1 and the co
 
 ## Owner controls
 
-**Wireless → Enable for 15 minutes** starts a temporary session after confirmation. It never makes debugging permanent. The selected button and remaining time show managed access; **Turn off Wi-Fi debugging** ends it early. Older/unmanaged debugging is identified separately so it can be replaced by a timed session. Approve only a recognised computer's RSA prompt.
+**Wireless → Developer options** opens Android’s debugging settings for optional computer maintenance. APK installation uses Android’s package installer. Approve only a recognised computer in Android’s authorization prompt.
 
 **Entertainment → Upload → Start uploads** shows an HTTPS address and a fresh pairing code. **Verify secure connection** shows the certificate SHA-256 fingerprint. Compare it in browser certificate details before trusting the connection or entering the pairing code. A changed IP may produce a new certificate. The alternative Python client verifies the pin before sending credentials or media:
 

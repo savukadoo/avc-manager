@@ -34,13 +34,10 @@
             android:label="Import media" android:screenOrientation="landscape"/>
         <activity android:name=".MediaTransferActivity" android:exported="false"
             android:label="Laptop uploads" android:screenOrientation="landscape"/>
-        <activity android:name=".WeatherMapActivity" android:exported="false"
-            android:label="Weather map" android:screenOrientation="landscape"/>
         <service android:name=".EntertainmentPlaybackService" android:exported="false" android:foregroundServiceType="mediaPlayback"/>
         <receiver android:name=".SecurityBootReceiver" android:exported="false">
             <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED"/><action android:name="android.intent.action.MY_PACKAGE_REPLACED"/></intent-filter>
         </receiver>
-        <service android:name=".WirelessDebugService" android:exported="false"/>
         <service android:name=".MediaTransferService" android:exported="false" android:foregroundServiceType="dataSync"/>
         <activity-alias android:name=".DashboardHome" android:targetActivity=".DashboardActivity"
             android:label="AVC Dashboard" android:exported="true" android:enabled="false">

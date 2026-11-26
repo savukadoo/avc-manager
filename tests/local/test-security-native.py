@@ -31,14 +31,12 @@ def check(ok,label):
  checks.append(label);print('PASS',label,flush=True);(OUT/'native-security-checks.json').write_text(json.dumps({'physical_device_contacted':False,'checks':checks,'count':len(checks)},indent=2)+'\n')
 if __name__=='__main__':
  assert adb('shell','getprop','ro.kernel.qemu')=='1'
- s=wait(lambda s:any(n['text']=='Enable for 15 minutes' for n in s['nodes']))
+ s=wait(lambda s:any(n['text']=='Developer options' for n in s['nodes']))
  baseline=json.loads((OUT/'baseline.json').read_text());baseline.setdefault('tls_key_existed',s['tls_key_present'])
  baseline.setdefault('activate_vpn_appop',adb('shell','appops','get','local.cc3.manager','ACTIVATE_VPN'))
  (OUT/'baseline.json').write_text(json.dumps(baseline,indent=2)+'\n')
- check(fits(capture('wireless-timed-access')),'Wireless controls fit measured CC3 viewport')
- tap('Enable for 15 minutes');s=capture('wireless-timed-confirmation')
- check(any('not encrypted' in n['text'] for n in s['nodes']) and any('15 minutes' in n['text'] for n in s['nodes']),'Debugging disclosure and expiry visible')
- check(fits(s),'Debugging confirmation controls fit');tap('Cancel')
+ check(fits(capture('wireless-developer-options')),'Wireless controls fit measured CC3 viewport')
+ check(any('package installer' in n['text'] for n in s['nodes']),'Local installation instructions visible')
  tap('Firewall');tap('Protection');s=capture('protection-defaults')
  check(not s['firewall']['firewall_persistent'] and not s['firewall']['firewall_block_unknown'],'New protection policies default off')
  check(fits(s),'Protection controls fit without clipping')

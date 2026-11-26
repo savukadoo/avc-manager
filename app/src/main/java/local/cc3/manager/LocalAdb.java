@@ -32,6 +32,7 @@ final class LocalAdb implements AutoCloseable {
         0x1a, 0x05, 0x00, 0x04, 0x14
     };
     private static final int LIMIT = 4096;
+    private static final int ADB_PORT = 5555;
     private final Socket socket = new Socket();
     private DataInputStream input;
     private int channel;
@@ -42,67 +43,50 @@ final class LocalAdb implements AutoCloseable {
 
     LocalAdb(Approval approval) throws Exception {
         try {
-            socket.connect(new InetSocketAddress("127.0.0.1", FytAdbController.ADB_PORT), 1500);
+            socket.connect(new InetSocketAddress("127.0.0.1", ADB_PORT), 1500);
             socket.setSoTimeout(4500);
             input = new DataInputStream(socket.getInputStream());
             send(CNXN, 0x01000000, LIMIT, utf8("host::\0"));
             Packet response = receive();
+            if (response.type != AUTH) {
+                throw new IOException("This control requires Android ADB authentication.");
+            }
+            KeyStore keys = KeyStore.getInstance("AndroidKeyStore");
+            keys.load(null);
+            if (!keys.containsAlias(KEY)) {
+                KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA", "AndroidKeyStore");
+                generator.initialize(new KeyGenParameterSpec.Builder(KEY, KeyProperties.PURPOSE_SIGN)
+                        .setKeySize(2048).setDigests(KeyProperties.DIGEST_NONE)
+                        .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1).build());
+                generator.generateKeyPair();
+            }
+            KeyStore.PrivateKeyEntry key = (KeyStore.PrivateKeyEntry) keys.getEntry(KEY, null);
+            if (response.arg0 != 1 || response.data.length != 20) {
+                throw new IOException("Unexpected ADB authentication request.");
+            }
+            Signature signature = Signature.getInstance("NONEwithRSA");
+            signature.initSign(key.getPrivateKey());
+            signature.update(SHA1_DIGEST_INFO);
+            signature.update(response.data);
+            send(AUTH, 2, 0, signature.sign());
+            response = receive();
             if (response.type == AUTH) {
-                KeyStore keys = KeyStore.getInstance("AndroidKeyStore");
-                keys.load(null);
-                if (!keys.containsAlias(KEY)) {
-                    KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA", "AndroidKeyStore");
-                    generator.initialize(new KeyGenParameterSpec.Builder(KEY, KeyProperties.PURPOSE_SIGN)
-                            .setKeySize(2048).setDigests(KeyProperties.DIGEST_NONE)
-                            .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1).build());
-                    generator.generateKeyPair();
+                byte[] publicKey = encode((RSAPublicKey) key.getCertificate().getPublicKey());
+                approval.requested(fingerprint(publicKey));
+                send(AUTH, 3, 0, utf8(Base64.encodeToString(publicKey, Base64.NO_WRAP)
+                        + " AVC-Manager@localhost\0"));
+                socket.setSoTimeout(25000);
+                try {
+                    response = receive();
+                } catch (SocketTimeoutException ignored) {
+                    throw new IOException("ADB approval timed out. Try again and accept the Android prompt.");
                 }
-                KeyStore.PrivateKeyEntry key = (KeyStore.PrivateKeyEntry) keys.getEntry(KEY, null);
-                if (response.arg0 != 1 || response.data.length != 20) {
-                    throw new IOException("Unexpected ADB authentication request.");
-                }
-                Signature signature = Signature.getInstance("NONEwithRSA");
-                signature.initSign(key.getPrivateKey());
-                signature.update(SHA1_DIGEST_INFO);
-                signature.update(response.data);
-                send(AUTH, 2, 0, signature.sign());
-                response = receive();
-                if (response.type == AUTH) {
-                    byte[] publicKey = encode((RSAPublicKey) key.getCertificate().getPublicKey());
-                    approval.requested(fingerprint(publicKey));
-                    send(AUTH, 3, 0, utf8(Base64.encodeToString(publicKey, Base64.NO_WRAP)
-                            + " AVC-Manager@localhost\0"));
-                    socket.setSoTimeout(25000);
-                    try {
-                        response = receive();
-                    } catch (SocketTimeoutException ignored) {
-                        throw new IOException("ADB approval timed out. Try again and accept the Android prompt.");
-                    }
-                    socket.setSoTimeout(4500);
-                }
+                socket.setSoTimeout(4500);
             }
             if (response.type != CNXN) throw new IOException("The head unit did not authorize ADB.");
         } catch (Exception error) {
             close();
             throw error;
-        }
-    }
-
-    /** Checks the initial challenge without sending a public key, signature or shell command. */
-    static boolean authenticationRequired() throws IOException {
-        try (Socket probe = new Socket()) {
-            probe.connect(new InetSocketAddress("127.0.0.1", FytAdbController.ADB_PORT), 1000);
-            probe.setSoTimeout(1500);
-            byte[] hello=utf8("host::\0");
-            ByteBuffer header=ByteBuffer.allocate(24).order(ByteOrder.LITTLE_ENDIAN);
-            header.putInt(CNXN).putInt(0x01000000).putInt(LIMIT).putInt(hello.length).putInt(checksum(hello)).putInt(~CNXN);
-            probe.getOutputStream().write(header.array());probe.getOutputStream().write(hello);
-            byte[] response=new byte[24];new DataInputStream(probe.getInputStream()).readFully(response);
-            ByteBuffer packet=ByteBuffer.wrap(response).order(ByteOrder.LITTLE_ENDIAN);
-            int type=packet.getInt(),argument=packet.getInt();packet.getInt();int length=packet.getInt();int sum=packet.getInt();int magic=packet.getInt();
-            if(type!=AUTH || magic!=~AUTH || argument!=1 || length!=20)return false;
-            byte[] challenge=new byte[20];new DataInputStream(probe.getInputStream()).readFully(challenge);
-            return sum==checksum(challenge);
         }
     }
 

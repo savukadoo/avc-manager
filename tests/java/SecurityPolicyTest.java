@@ -10,13 +10,6 @@ public final class SecurityPolicyTest {
     private static int checks;
     private static void require(boolean condition,String name){if(!condition)throw new AssertionError(name);checks++;}
     public static void main(String[] args)throws Exception{
-        require(DebugLease.valid(100,1000,1,1,"wifi-a","wifi-a"),"valid same-network lease");
-        require(!DebugLease.valid(1000,1000,1,1,"wifi-a","wifi-a"),"deadline is exclusive");
-        require(!DebugLease.valid(100,1000,2,1,"wifi-a","wifi-a"),"reboot invalidates lease");
-        require(!DebugLease.valid(100,1000,1,1,"wifi-b","wifi-a"),"replacement Wi-Fi invalidates lease");
-        require(!DebugLease.valid(100,1000,1,1,"","wifi-a"),"disconnected invalidates lease");
-        require(!DebugLease.valid(100,Long.MAX_VALUE,1,1,"wifi-a","wifi-a"),"tampered oversized lease rejected");
-        require(!DebugLease.valid(-1,1000,1,1,"wifi-a","wifi-a"),"invalid monotonic clock rejected");
         require(FirewallRestartPolicy.requested(false,false,false,false,false,0)==0,"no unrequested boot protection");
         require(FirewallRestartPolicy.requested(false,false,false,true,true,0)==1,"persistent restarts enforcement only");
         require(FirewallRestartPolicy.requested(false,true,false,true,true,0)==0,"explicit stop wins over app persistence");

@@ -10,12 +10,6 @@ public final class SecurityBootReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
         boolean boot=Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction());
         if(!boot && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction()))return;
-        if(WirelessDebugService.hasLease(context)){
-            Intent debug=new Intent(context,WirelessDebugService.class);
-            if(boot)debug.setAction(WirelessDebugService.STOP);
-            // An update restores only the unexpired existing lease; it never renews or enables one.
-            context.startForegroundService(debug);
-        }
         restoreProtection(context);
     }
     static void restoreProtection(Context context){

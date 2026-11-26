@@ -55,8 +55,10 @@ final class WeatherWidget extends FrameLayout implements java.io.Closeable {
         credits.setTooltipText("Weather details · Update time and credits");
         credits.setOnClickListener(view -> showCredits());
         addView(credits, new FrameLayout.LayoutParams(screen.dp(48), screen.dp(48), Gravity.TOP | Gravity.END));
-        mapButton = screen.button("Radar", false, () -> screen.open(new Intent(screen, WeatherMapActivity.class)));
-        mapButton.setContentDescription("Open weather radar map"); mapButton.setTooltipText("Weather radar and forecast map");
+        mapButton = screen.button("Radar", false, () -> screen.open(new Intent(Intent.ACTION_VIEW,
+                Uri.parse("https://www.windy.com/-Weather-radar-radar"))));
+        mapButton.setContentDescription("Open weather radar in browser");
+        mapButton.setTooltipText("Open Windy radar in browser");
         mapButton.setTextSize(12); mapButton.setMinWidth(0); mapButton.setMinimumWidth(0);
         mapButton.setGravity(Gravity.CENTER); mapButton.setPadding(screen.dp(4), screen.dp(12), screen.dp(4), screen.dp(12));
         Drawable icon = screen.getDrawable(R.drawable.ic_weather_map).mutate();

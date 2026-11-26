@@ -40,8 +40,6 @@ import android.widget.Toast;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.util.ArrayList;
 
 public final class MainActivity extends Screen {
@@ -68,10 +66,6 @@ public final class MainActivity extends Screen {
     private TextView detail;
     private TextView accessAddress;
     private TextView wifiState,accessMask,accessRouter;
-    private TextView accessMessage;
-    private TextView debugBadge, debugTime, debugTimeLabel;
-    private Button enableAdbButton;
-    private Button stopAdbButton;
     private TrafficPage trafficPage;
     private int pendingVpnModes;
     private String controlDetail;
@@ -94,11 +88,6 @@ public final class MainActivity extends Screen {
     private String chosenClockFace;
     private int chosenFavouriteTiles;
     private Boolean chosenPanelHeadings;
-    private boolean adbBusy;
-    private boolean probing;
-    private String adbMessage = "";
-    private boolean portOpen;
-    private boolean portChecked;
     private boolean voiceBusy;
     private String voiceMessage = "";
     private TextView assistantStatus;
@@ -262,10 +251,8 @@ public final class MainActivity extends Screen {
         equalizer = null;
         trafficPage = null;
         mobileState = null;
+        accessAddress = null;
         detail = null;
-        debugBadge = debugTime = debugTimeLabel = null;
-        enableAdbButton = null;
-        stopAdbButton = null;
         hannaAction = null;
         assistantStatus = null;
         recognizerStatus = null;
@@ -568,7 +555,7 @@ public final class MainActivity extends Screen {
     }
 
     private void access() {
-        pageHeading("Wireless","Manage Wi-Fi, mobile data and temporary computer access. Network settings affect connectivity; computer access is a separate timed maintenance session.");
+        pageHeading("Wireless","View your network details and open Android settings for Wi-Fi, mobile data or developer tools.");
         boolean wide=paneWidth()>=750;
         LinearLayout networks=wide?row():column();
         LinearLayout wifi = card();
@@ -593,49 +580,16 @@ public final class MainActivity extends Screen {
         addSection(networks);
 
         LinearLayout connection = card();
-        LinearLayout debugHeading = row();
-        debugHeading.addView(helpHeading("Computer access", 19,
-                "Wi-Fi debugging lets an authorised computer maintain the head unit. A timed session lasts up to 15 minutes and ends when the trusted Wi-Fi connection changes. Approve only computers you recognise."),
-                new LinearLayout.LayoutParams(0, dp(48), 1));
-        debugBadge = managerText("Checking", 13, colors.muted, 650);
-        debugBadge.setSingleLine(true);
-        debugBadge.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        debugBadge.setPadding(dp(12), dp(6), dp(12), dp(6));
-        debugHeading.addView(debugBadge);
-        connection.addView(debugHeading);
-        LinearLayout summary = row();
-        LinearLayout description = column();
-        detail = managerText("", 16, colors.ink, 550);
-        detail.setMaxLines(2);
-        description.addView(detail);
-        accessMessage = managerText("", 13, colors.muted, 450);
-        accessMessage.setMaxLines(2);
-        accessMessage.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        accessMessage.setVisibility(View.GONE);
-        description.addView(accessMessage);
-        summary.addView(description, new LinearLayout.LayoutParams(0, -2, 1));
-        LinearLayout timer = column();
-        timer.setGravity(Gravity.END);
-        debugTime = managerText("15 min", 26, colors.ink, 650);
-        debugTime.setFontFeatureSettings("tnum");
-        debugTime.setGravity(Gravity.END);
-        debugTimeLabel = managerText("Session limit", 11, colors.muted, 500);
-        debugTimeLabel.setGravity(Gravity.END);
-        timer.addView(debugTime, new LinearLayout.LayoutParams(-1, -2));
-        timer.addView(debugTimeLabel, new LinearLayout.LayoutParams(-1, -2));
-        LinearLayout.LayoutParams timerBounds = new LinearLayout.LayoutParams(dp(142), -2);
-        timerBounds.leftMargin = dp(12);
-        summary.addView(timer, timerBounds);
-        connection.addView(summary);
-        LinearLayout debugActions = row();
-        enableAdbButton = button("Enable for 15 minutes", true, this::confirmAdb);
-        tile(debugActions, enableAdbButton);
-        stopAdbButton = button("Turn off", false, () -> setAdb(false));
-        stylePanelAction(stopAdbButton);
-        tile(debugActions, stopAdbButton);
-        LinearLayout.LayoutParams actionBounds = new LinearLayout.LayoutParams(-1, -2);
+        connection.addView(helpHeading("Computer access", 19,
+                "Android Developer options control debugging. Approve only computers you recognise."));
+        TextView install = managerText("APK installation uses Android’s package installer.", 16, colors.ink, 550);
+        connection.addView(install);
+        Button developer = button("Developer options", false,
+                () -> open(new Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)));
+        stylePanelAction(developer);
+        LinearLayout.LayoutParams actionBounds = new LinearLayout.LayoutParams(-1, dp(56));
         actionBounds.topMargin = dp(8);
-        connection.addView(debugActions, actionBounds);
+        connection.addView(developer, actionBounds);
         addSection(connection);
     }
 
@@ -1473,7 +1427,7 @@ public final class MainActivity extends Screen {
                 result = adb.setEnabled(enable) ? "Hanna is enabled." : "Hanna is disabled.";
             } catch (IOException error) {
                 result = error instanceof java.net.ConnectException
-                        ? "Enable Wi-Fi ADB in Wireless, then try again." : error.getMessage();
+                        ? "This control needs an authorised local ADB connection supported by your firmware." : error.getMessage();
             } catch (Exception error) {
                 result = "Could not authorize AVC Manager with Android.";
             }
@@ -1485,37 +1439,6 @@ public final class MainActivity extends Screen {
                 refreshStatus();
             });
         }, "cc3-hanna-control").start();
-    }
-
-    private void confirmAdb() {
-        if (adbBusy) return;
-        if (wifiAddress(wifiLink()) == null) {
-            message("Connect the CC3 to Wi-Fi first.");
-            return;
-        }
-        if (Settings.Global.getInt(getContentResolver(), Settings.Global.ADB_ENABLED, 0) != 1) {
-            message("Turn on USB debugging in Developer options first.");
-            return;
-        }
-        PanelDialog dialog = new PanelDialog("Enable Wi-Fi debugging for 15 minutes?", 680);
-        dialog.message("Legacy debugging is not encrypted. Approve only trusted computers. Access stops after 15 minutes or when this Wi-Fi connection changes. Android force-stop can prevent the timer from running; turn debugging off when finished.");
-        dialog.action("Cancel", false, dialog::dismiss);
-        dialog.action("Enable", true, () -> {
-            dialog.dismiss();
-            setAdb(true);
-        });
-        dialog.show();
-    }
-
-    private void setAdb(boolean enable) {
-        startForegroundService(new Intent(this,WirelessDebugService.class)
-                .setAction(enable?WirelessDebugService.ENABLE:WirelessDebugService.STOP));
-        handler.postDelayed(this::refreshStatus,100);
-    }
-
-    private void message(String text) {
-        adbMessage = text;
-        refreshStatus();
     }
 
     // Android10 compatibility: this scoped platform path intentionally retains legacy APIs.
@@ -1560,18 +1483,14 @@ public final class MainActivity extends Screen {
                 + "\nSubnet mask  " + subnet + "\nDefault router  " + router;
     }
 
-    private boolean checkPort() {
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress("127.0.0.1", FytAdbController.ADB_PORT), 400);
-            return true;
-        } catch (IOException error) {
-            return false;
-        }
-    }
-
     private void refreshStatus() {
         if (trafficPage != null) trafficPage.refresh();
         if (mobilePage != null) mobilePage.refresh();
+        if ("Access".equals(section) && accessAddress != null) {
+            refreshWifi();
+            refreshMobile();
+            return;
+        }
         if (detail == null) return;
         if ("Controls".equals(section) && "Voice".equals(controlDetail)) {
             assistantStatus.setText(voiceProvider("assistant", "No default assistant selected", "Google"));
@@ -1587,21 +1506,6 @@ public final class MainActivity extends Screen {
                     : !voiceMessage.isEmpty() ? voiceMessage : enabled ? "Hanna is enabled." : "Hanna is disabled.");
             return;
         }
-        if (!"Access".equals(section)) return;
-        showAdbStatus();
-        refreshMobile();
-        if (adbBusy || probing) return;
-        probing = true;
-        new Thread(() -> {
-            boolean listening = checkPort();
-            handler.post(() -> {
-                probing = false;
-                if (isDestroyed() || adbBusy) return;
-                portOpen = listening;
-                portChecked = true;
-                if ("Access".equals(section) && detail != null) showAdbStatus();
-            });
-        }, "cc3-adb-status").start();
     }
 
     private Boolean hannaEnabled() {
@@ -1612,35 +1516,7 @@ public final class MainActivity extends Screen {
         }
     }
 
-    private void showAdbStatus() {
-        boolean debugging = Settings.Global.getInt(getContentResolver(), Settings.Global.ADB_ENABLED, 0) == 1;
-        WirelessDebugService.State lease=WirelessDebugService.state();
-        boolean managed=lease.active && lease.remaining>0;
-        boolean active=debugging && portChecked && portOpen;
-        boolean stopping = lease.busy && lease.message.startsWith("Turning off");
-        String state = lease.busy ? stopping ? "Stopping…" : "Starting…"
-                : managed ? "On ✓" : !debugging ? "Unavailable" : !portChecked ? "Checking…" : active ? "On" : "Off";
-        debugBadge.setText(state);
-        boolean on = managed || active;
-        GradientDrawable badge = shape(on ? colors.selection : colors.background, 12);
-        badge.setStroke(dp(1), on ? colors.accent : colors.outline);
-        debugBadge.setBackground(badge);
-        debugBadge.setTextColor(on ? colors.accent : colors.muted);
-        detail.setText(lease.busy ? stopping ? "Turning off computer access…" : "Starting computer access…"
-                : managed ? "Wi-Fi debugging session active"
-                : !debugging ? "USB debugging is off" : !portChecked ? "Checking Wi-Fi debugging…"
-                : active ? "Wi-Fi debugging has no session timer" : "Wi-Fi debugging is off");
-        long seconds = Math.max(0, (lease.remaining + 999) / 1000);
-        debugTime.setText(managed ? String.format(java.util.Locale.ROOT, "%02d:%02d", seconds / 60, seconds % 60)
-                : lease.busy || active ? "—" : "15 min");
-        debugTime.setTextColor(managed ? colors.accent : colors.ink);
-        debugTimeLabel.setText(managed ? "Remaining" : lease.busy ? "Please wait" : active ? "No timer" : "Session limit");
-        enableAdbButton.setSelected(managed);
-        enableAdbButton.setText(managed?"Session active  ✓":"Enable for 15 minutes");
-        styleButton(enableAdbButton,colors,!managed,false,managed);
-        enableAdbButton.setEnabled(!lease.busy && portChecked && !managed);
-        stopAdbButton.setEnabled(!lease.busy && (managed || active || WirelessDebugService.hasLease(this)));
-        styleButton(stopAdbButton, colors, on && !lease.busy, false, false);
+    private void refreshWifi() {
         String network=wifiDetails();
         String[] lines=network.split("\n");
         boolean connected=lines.length==3;
@@ -1650,9 +1526,5 @@ public final class MainActivity extends Screen {
         wifiState.setTextColor(connected?colors.accent:colors.muted);
         accessMask.setText(connected?lines[1].replace("Subnet mask  ",""):"—");
         accessRouter.setText(connected?lines[2].replace("Default router  ",""):"—");
-        String message = lease.message.isEmpty() ? adbMessage : lease.message;
-        if ("Wi-Fi debugging is on".equals(message) || "Wi-Fi debugging is off".equals(message) || lease.busy) message = "";
-        showText(accessMessage, message);
     }
-
 }
